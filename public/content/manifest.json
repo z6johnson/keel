@@ -1,0 +1,100 @@
+{
+  "title": "AI Strategy \u2014 UC San Diego",
+  "sequence": ["landscape", "opportunity", "architecture", "action"],
+  "modules": [
+    {
+      "id": "landscape",
+      "title": "The Landscape",
+      "estimatedMinutes": 60,
+      "beats": [
+        { "id": "l-breath-open", "role": "breath" },
+        {
+          "id": "l-statement-1",
+          "role": "statement",
+          "source": { "type": "file", "path": "beats/landscape-opening.md" }
+        },
+        {
+          "id": "l-paragraph-1",
+          "role": "paragraph",
+          "source": { "type": "file", "path": "beats/landscape-context.md" }
+        },
+        {
+          "id": "l-signals",
+          "role": "signal",
+          "source": {
+            "type": "api",
+            "url": "https://api.fogbell.com/api/v1/signals?level=Significant&limit=5",
+            "transform": "fogbell"
+          },
+          "fallback": { "type": "file", "path": "beats/signals-fallback.md" },
+          "caption": "Live signals from FogBell"
+        },
+        { "id": "l-breath-close", "role": "breath" }
+      ]
+    },
+    {
+      "id": "opportunity",
+      "title": "The Opportunity",
+      "estimatedMinutes": 45,
+      "beats": [
+        {
+          "id": "o-statement-1",
+          "role": "statement",
+          "source": { "type": "file", "path": "beats/opportunity-opening.md" }
+        },
+        {
+          "id": "o-paragraph-1",
+          "role": "paragraph",
+          "source": { "type": "file", "path": "beats/opportunity-detail.md" }
+        },
+        {
+          "id": "o-statement-2",
+          "role": "statement",
+          "content": "Strategy is a design problem."
+        },
+        { "id": "o-breath", "role": "breath" }
+      ]
+    },
+    {
+      "id": "architecture",
+      "title": "The Architecture",
+      "estimatedMinutes": 75,
+      "beats": [
+        {
+          "id": "a-statement-1",
+          "role": "statement",
+          "source": { "type": "file", "path": "beats/architecture-opening.md" }
+        },
+        {
+          "id": "a-paragraph-1",
+          "role": "paragraph",
+          "source": { "type": "file", "path": "beats/architecture-detail.md" }
+        },
+        {
+          "id": "a-statement-2",
+          "role": "statement",
+          "content": "Build the primitives. Compose the solutions."
+        },
+        { "id": "a-breath", "role": "breath" }
+      ]
+    },
+    {
+      "id": "action",
+      "title": "What\u2019s Next",
+      "estimatedMinutes": 60,
+      "beats": [
+        {
+          "id": "x-paragraph-1",
+          "role": "paragraph",
+          "source": { "type": "file", "path": "beats/action-detail.md" }
+        },
+        {
+          "id": "x-statement-1",
+          "role": "statement",
+          "content": "Let\u2019s build."
+        },
+        { "id": "x-breath", "role": "breath" }
+      ]
+    }
+  ]
+}

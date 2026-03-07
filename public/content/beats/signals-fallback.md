@@ -1,0 +1,1 @@
+Recent signals from the landscape suggest accelerating institutional investment in AI infrastructure, with particular emphasis on research computing, curriculum integration, and administrative automation.
