@@ -44,6 +44,10 @@ async function loadFromSource(source: ContentSource, _role: string): Promise<str
     return loadApiContent(source.url ?? '', source.transform);
   }
 
+  if (source.type === 'notion') {
+    return loadNotionContent(source.pageId ?? '');
+  }
+
   return '';
 }
 
@@ -77,6 +81,13 @@ async function loadApiContent(url: string, transform?: string): Promise<string> 
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function loadNotionContent(pageId: string): Promise<string> {
+  const res = await fetch(`/api/notion?beat=${encodeURIComponent(pageId)}`);
+  if (!res.ok) throw new Error(`Notion beat error: ${res.status}`);
+  const text = await res.text();
+  return renderMarkdown(text);
 }
 
 function getApiKey(): string | undefined {
