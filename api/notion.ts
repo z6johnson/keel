@@ -185,7 +185,7 @@ async function buildManifest(slug: string) {
     return {
       id: p.id,
       beatId: getPropText(p, 'ID'),
-      role: getPropSelect(p, 'Role'),
+      role: getPropSelect(p, 'Role').toLowerCase(),
       order: getPropNumber(p, 'Order'),
       caption: getPropText(p, 'Caption'),
       sourceType: getPropSelect(p, 'Source Type'),
