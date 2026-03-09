@@ -1,11 +1,12 @@
 export type BeatRole = 'statement' | 'paragraph' | 'signal' | 'breath' | 'section';
 
 export interface ContentSource {
-  type: 'file' | 'api' | 'inline';
+  type: 'file' | 'api' | 'inline' | 'notion';
   path?: string;
   url?: string;
   text?: string;
   transform?: string;
+  pageId?: string;
 }
 
 export interface Beat {

@@ -22,6 +22,7 @@
     }
   ],
   "rewrites": [
-    { "source": "/((?!content|assets).*)", "destination": "/index.html" }
+    { "source": "/api/notion", "destination": "/api/notion" },
+    { "source": "/((?!content|assets|api).*)", "destination": "/index.html" }
   ]
 }

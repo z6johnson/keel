@@ -15,8 +15,13 @@ async function boot() {
   const initialMode = savedMode ?? 'dark';
   document.documentElement.setAttribute('data-mode', initialMode);
 
-  // Load manifest
-  const manifest: Manifest = await loadManifest('/content/manifest.json');
+  // Load manifest — check for ?notion=<slug> query param
+  const params = new URLSearchParams(window.location.search);
+  const notionSlug = params.get('notion');
+  const manifestUrl = notionSlug
+    ? `/api/notion?manifest=${encodeURIComponent(notionSlug)}`
+    : '/content/manifest.json';
+  const manifest: Manifest = await loadManifest(manifestUrl);
 
   // Hide beat container and progress during module selection
   beatContainer.style.display = 'none';
