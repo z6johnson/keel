@@ -16,13 +16,18 @@ export function createRenderer(
   let stagedLayer = layerB;
   let isFirst = true;
 
+  function stripParagraphWrap(html: string): string {
+    // Remove <p>…</p> wrapper so text can nest inside <h1>/<h2> without invalid HTML
+    return html.replace(/^<p>(.*)<\/p>$/s, '$1');
+  }
+
   function buildBeatHtml(beat: Beat, content: string): string {
     switch (beat.role) {
       case 'statement':
-        return `<div class="beat beat--statement"><h1>${content || escapeHtml(beat.content ?? '')}</h1></div>`;
+        return `<div class="beat beat--statement"><h1>${stripParagraphWrap(content) || escapeHtml(beat.content ?? '')}</h1></div>`;
 
       case 'section':
-        return `<div class="beat beat--section"><h2>${content || escapeHtml(beat.content ?? '')}</h2></div>`;
+        return `<div class="beat beat--section"><h2>${stripParagraphWrap(content) || escapeHtml(beat.content ?? '')}</h2></div>`;
 
       case 'paragraph':
         return `<div class="beat beat--paragraph"><div class="prose">${content}</div></div>`;
