@@ -6,7 +6,6 @@ import { createRenderer } from './renderer';
 
 async function boot() {
   const keel = document.getElementById('keel')!;
-  const beatContainer = document.getElementById('beat-container')!;
   const progressEl = document.getElementById('progress-counter')!;
   const progressFooter = document.getElementById('progress')!;
 
@@ -23,8 +22,7 @@ async function boot() {
     : '/content/manifest.json';
   const manifest: Manifest = await loadManifest(manifestUrl);
 
-  // Hide beat container and progress during module selection
-  beatContainer.style.display = 'none';
+  // Hide progress during module selection
   progressFooter.style.display = 'none';
 
   // Color mode toggle available during selection
@@ -38,22 +36,30 @@ async function boot() {
   }
   document.addEventListener('keydown', handleColorToggle);
 
-  // Show module selector
+  // Show module selector (this replaces keel's innerHTML, destroying beat-container)
   const { selectedModuleIds } = await showModuleSelector(manifest, keel);
 
   document.removeEventListener('keydown', handleColorToggle);
+
+  // Re-create beat container elements (module selector cleanup wiped them)
+  keel.innerHTML = `
+    <div id="beat-container" class="beat-container">
+      <div id="beat-a" class="beat-layer" aria-hidden="true"></div>
+      <div id="beat-b" class="beat-layer" aria-hidden="true"></div>
+    </div>
+  `;
+  const liveBeatContainer = document.getElementById('beat-container')!;
 
   // Build flat beat list and engine
   const flatBeats = buildFlatBeats(manifest, selectedModuleIds);
   const colorMode = (document.documentElement.getAttribute('data-mode') ?? 'dark') as 'light' | 'dark';
   const engine = createEngine(manifest, flatBeats, colorMode);
 
-  // Show beat container and progress
-  beatContainer.style.display = '';
+  // Show progress
   progressFooter.style.display = '';
 
-  // Create renderer
-  const renderer = createRenderer(beatContainer, progressEl);
+  // Create renderer with live DOM elements
+  const renderer = createRenderer(liveBeatContainer, progressEl);
 
   // Subscribe renderer
   engine.subscribe(() => {
