@@ -1,5 +1,5 @@
 /* ============================================
-   KEEL — Typographic Performance Instrument
+   KEEL — Typographic Presentation Instrument
    Swiss International Typographic Style
    ============================================ */
 
@@ -14,11 +14,9 @@
   --bg: #FAFAF7;
   --muted: rgba(26, 26, 26, 0.55);
   --rule: rgba(26, 26, 26, 0.12);
-  --transition-beat: 200ms ease;
+  --transition-slide: 200ms ease;
   --display-size: clamp(3.5rem, 6vw, 7rem);
-  --section-size: clamp(2.5rem, 5vw, 5.5rem);
   --body-size: clamp(1.4rem, 2.2vw, 2rem);
-  --caption-size: 1rem;
 }
 
 [data-mode="dark"] {
@@ -72,7 +70,7 @@ body {
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity var(--transition-beat);
+  transition: opacity var(--transition-slide);
   pointer-events: none;
 }
 
@@ -80,9 +78,9 @@ body {
   opacity: 1;
 }
 
-/* --- Beat: Statement --- */
+/* --- Slide: Statement --- */
 
-.beat--statement {
+.slide--statement {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -90,7 +88,7 @@ body {
   text-align: left;
 }
 
-.beat--statement h1 {
+.slide--statement h1 {
   font-family: 'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif;
   font-weight: 300;
   font-size: var(--display-size);
@@ -100,35 +98,16 @@ body {
   text-wrap: balance;
 }
 
-/* --- Beat: Section --- */
+/* --- Slide: Paragraph --- */
 
-.beat--section {
+.slide--paragraph {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
 }
 
-.beat--section h2 {
-  font-family: 'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif;
-  font-weight: 400;
-  font-size: var(--section-size);
-  line-height: 1.12;
-  letter-spacing: -0.02em;
-  max-width: 28em;
-  text-wrap: balance;
-}
-
-/* --- Beat: Paragraph --- */
-
-.beat--paragraph {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-}
-
-.beat--paragraph .prose {
+.slide--paragraph .prose {
   font-family: 'Source Serif 4', Georgia, serif;
   font-size: var(--body-size);
   font-weight: 400;
@@ -136,15 +115,15 @@ body {
   max-width: 42em;
 }
 
-.beat--paragraph .prose p {
+.slide--paragraph .prose p {
   margin-bottom: 1em;
 }
 
-.beat--paragraph .prose p:last-child {
+.slide--paragraph .prose p:last-child {
   margin-bottom: 0;
 }
 
-.beat--paragraph .prose strong {
+.slide--paragraph .prose strong {
   font-weight: 600;
 }
 
@@ -247,19 +226,15 @@ body {
   text-decoration-color: var(--fg);
 }
 
-/* --- Prose: Statement/Section fallback --- */
+/* --- Prose: Statement fallback --- */
 
 .prose--statement {
   max-width: 28em;
 }
 
-.prose--section {
-  max-width: 32em;
-}
+/* --- Slide: Breath --- */
 
-/* --- Beat: Breath --- */
-
-.beat--breath {
+.slide--breath {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -274,9 +249,9 @@ body {
   user-select: none;
 }
 
-/* --- Beat: Signal --- */
+/* --- Slide: Signal --- */
 
-.beat--signal {
+.slide--signal {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -334,22 +309,6 @@ body {
   color: var(--muted);
 }
 
-/* --- Caption --- */
-
-.beat__caption {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-family: 'Hanken Grotesk', sans-serif;
-  font-size: var(--caption-size);
-  font-weight: 400;
-  color: var(--muted);
-  letter-spacing: 0.03em;
-  padding-bottom: 1rem;
-}
-
 /* --- Progress --- */
 
 .progress {
@@ -366,125 +325,6 @@ body {
   color: var(--muted);
   letter-spacing: 0.05em;
   opacity: 0.35;
-}
-
-/* --- Module Selector --- */
-
-.module-selector {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  min-height: 100vh;
-  padding: 8vh 8vw;
-}
-
-.module-selector__title {
-  font-family: 'Hanken Grotesk', sans-serif;
-  font-weight: 300;
-  font-size: clamp(2rem, 3.5vw, 3.5rem);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  margin-bottom: 6vh;
-}
-
-.module-selector__list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  margin-bottom: 6vh;
-  width: 100%;
-  max-width: 48em;
-}
-
-.module-selector__item {
-  display: flex;
-  align-items: baseline;
-  gap: 1.25rem;
-  cursor: pointer;
-  padding: 1rem 0;
-  border-bottom: 1px solid var(--rule);
-  outline: none;
-}
-
-.module-selector__item:focus-visible {
-  outline: 2px solid var(--fg);
-  outline-offset: 4px;
-}
-
-.module-selector__check {
-  flex-shrink: 0;
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 1.5px solid var(--fg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-family: 'Hanken Grotesk', sans-serif;
-  transition: background-color 100ms ease;
-}
-
-.module-selector__check[aria-checked="true"] {
-  background-color: var(--fg);
-  color: var(--bg);
-}
-
-.module-selector__label {
-  font-family: 'Hanken Grotesk', sans-serif;
-  font-weight: 400;
-  font-size: 1.5rem;
-  line-height: 1.3;
-  flex: 1;
-}
-
-.module-selector__time {
-  font-family: 'Hanken Grotesk', sans-serif;
-  font-size: var(--caption-size);
-  font-weight: 400;
-  color: var(--muted);
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-}
-
-.module-selector__footer {
-  display: flex;
-  align-items: baseline;
-  gap: 3rem;
-}
-
-.module-selector__total {
-  font-family: 'Hanken Grotesk', sans-serif;
-  font-size: 1.1rem;
-  font-weight: 400;
-  color: var(--muted);
-}
-
-.module-selector__start {
-  font-family: 'Hanken Grotesk', sans-serif;
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--fg);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem 0;
-  letter-spacing: 0.03em;
-  border-bottom: 1px solid var(--fg);
-}
-
-.module-selector__start:focus-visible {
-  outline: 2px solid var(--fg);
-  outline-offset: 4px;
-}
-
-.module-selector__hint {
-  font-family: 'Hanken Grotesk', sans-serif;
-  font-size: 0.85rem;
-  color: var(--muted);
-  margin-top: 3vh;
-  opacity: 0.5;
 }
 
 /* --- Reduced Motion --- */

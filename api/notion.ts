@@ -36,16 +36,6 @@ function getPropNumber(page: PageObjectResponse, name: string): number {
   return 0;
 }
 
-function getPropSelect(page: PageObjectResponse, name: string): string {
-  const p = prop(page, name);
-  if (p?.type === 'select') return p.select?.name ?? '';
-  return '';
-}
-
-function slugify(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
-
 // ---------- blocks → markdown ----------
 
 function richTextToMarkdown(rt: RichTextItemResponse[]): string {
@@ -110,38 +100,28 @@ function blocksToMarkdown(blocks: BlockObjectResponse[]): string {
 
 // ---------- role inference ----------
 
-type BeatRole = 'statement' | 'paragraph' | 'signal' | 'breath';
+type SlideRole = 'statement' | 'paragraph' | 'signal' | 'breath';
 
-function inferRole(markdown: string): BeatRole {
+function isUrl(text: string): boolean {
+  return /^https?:\/\/\S+$/.test(text.trim());
+}
+
+function inferRole(markdown: string): SlideRole {
   const trimmed = markdown.trim();
 
-  // Empty → breath
   if (!trimmed) return 'breath';
-
-  // Signals directive
   if (trimmed === '{{signals}}') return 'signal';
+  if (isUrl(trimmed)) return 'signal';
 
-  // Check for block-level elements (headings, lists, blockquotes, hr, multiple paragraphs)
   const hasBlocks = /^(?:#{1,3} |- |\d+\. |> |---)/m.test(trimmed);
   if (hasBlocks) return 'paragraph';
-
-  // Multiple paragraphs (double newline separated)
   if (/\n\s*\n/.test(trimmed)) return 'paragraph';
-
-  // Short single paragraph → statement
   if (trimmed.length <= 140) return 'statement';
 
   return 'paragraph';
 }
 
 // ---------- manifest builder ----------
-
-interface NoteRow {
-  pageId: string;
-  title: string;
-  module: string;
-  order: number;
-}
 
 async function loadPageBody(pageId: string): Promise<string> {
   const blocks = await notion.blocks.children.list({
@@ -156,119 +136,63 @@ async function loadPageBody(pageId: string): Promise<string> {
   return blocksToMarkdown(blockResults);
 }
 
-async function buildManifest(workshopSlug?: string) {
-  // 1. Get database title for the presentation name
+async function buildManifest() {
   const dbMeta = await notion.databases.retrieve({ database_id: NOTES_DB });
   const dbTitle = dbMeta.title.map(t => t.plain_text).join('') || 'Untitled';
 
-  // 2. Query all notes (optionally filtered by Workshop)
-  const filter = workshopSlug
-    ? { property: 'Workshop', select: { equals: workshopSlug } }
-    : undefined;
+  // Check if Order property exists for sorting
+  const hasOrder = 'Order' in dbMeta.properties;
 
   const query = await notion.databases.query({
     database_id: NOTES_DB,
-    filter,
+    sorts: hasOrder
+      ? [{ property: 'Order', direction: 'ascending' }]
+      : [{ timestamp: 'created_time', direction: 'ascending' }],
     page_size: 100,
   });
 
-  const notes: NoteRow[] = (query.results as PageObjectResponse[]).map(p => ({
-    pageId: p.id,
-    title: getPropText(p, 'Name'),
-    module: getPropSelect(p, 'Module'),
-    order: getPropNumber(p, 'Order'),
-  }));
+  const pages = query.results as PageObjectResponse[];
 
-  // 3. Group by module
-  const moduleMap = new Map<string, NoteRow[]>();
-  for (const note of notes) {
-    const key = note.module || 'Untitled';
-    if (!moduleMap.has(key)) moduleMap.set(key, []);
-    moduleMap.get(key)!.push(note);
-  }
+  // Fetch all page bodies in parallel
+  const bodies = await Promise.all(pages.map(p => loadPageBody(p.id)));
 
-  // Sort notes within each module by Order
-  for (const group of moduleMap.values()) {
-    group.sort((a, b) => a.order - b.order);
-  }
+  // Build flat slide array
+  const slides = pages.map((page, i) => {
+    const markdown = bodies[i];
+    const role = inferRole(markdown);
+    const id = getPropText(page, 'Name') || `slide-${i + 1}`;
 
-  // Sort modules by their first note's Order value
-  const sortedModules = [...moduleMap.entries()].sort(
-    (a, b) => (a[1][0]?.order ?? 0) - (b[1][0]?.order ?? 0)
-  );
+    const slide: Record<string, unknown> = { id, role };
 
-  // 4. Fetch all page bodies in parallel
-  const allPageIds = notes.map(n => n.pageId);
-  const bodies = await Promise.all(allPageIds.map(id => loadPageBody(id)));
-  const bodyMap = new Map<string, string>();
-  allPageIds.forEach((id, i) => bodyMap.set(id, bodies[i]));
+    if (role === 'signal') {
+      slide.content = markdown.trim();
+    } else if (role !== 'breath') {
+      slide.content = markdown;
+    }
 
-  // 5. Build manifest
-  const sequence: string[] = [];
-  const modules = sortedModules.map(([moduleName, moduleNotes]) => {
-    const moduleId = slugify(moduleName);
-    sequence.push(moduleId);
-
-    const beats = moduleNotes.map((note, idx) => {
-      const markdown = bodyMap.get(note.pageId) ?? '';
-      const role = inferRole(markdown);
-
-      const beat: Record<string, unknown> = {
-        id: `${moduleId}-${idx + 1}`,
-        role,
-      };
-
-      // Inline content for non-signal beats
-      if (role === 'signal') {
-        beat.content = '{{signals}}';
-      } else if (role !== 'breath') {
-        beat.content = markdown;
-      }
-
-      return beat;
-    });
-
-    return {
-      id: moduleId,
-      title: moduleName,
-      estimatedMinutes: Math.max(1, moduleNotes.length * 3),
-      beats,
-    };
+    return slide;
   });
 
-  return { title: dbTitle, sequence, modules, fogbellUrl: FOGBELL_URL || undefined };
+  return { title: dbTitle, slides, fogbellUrl: FOGBELL_URL || undefined };
 }
 
 // ---------- handler ----------
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const { manifest, beat: beatPageId } = req.query;
+    const { manifest } = req.query;
 
-    // Mode 1: Build manifest from Notion
     if (manifest !== undefined) {
-      const slug = typeof manifest === 'string' && manifest !== '' ? manifest : undefined;
-      const result = await buildManifest(slug);
-
+      const result = await buildManifest();
       res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
       return res.status(200).json(result);
     }
 
-    // Mode 2: Load a single page's content (backward compat)
-    if (typeof beatPageId === 'string') {
-      const markdown = await loadPageBody(beatPageId);
-
-      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      return res.status(200).send(markdown);
-    }
-
-    return res.status(400).json({ error: 'Provide ?manifest or ?manifest=<workshop-slug> or ?beat=<pageId>' });
+    return res.status(400).json({ error: 'Use ?manifest to load the presentation.' });
   } catch (err) {
     console.error('Notion API error:', err);
     return res.status(500).json({ error: 'Internal server error' });
