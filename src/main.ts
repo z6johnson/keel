@@ -1,5 +1,5 @@
 import type { Manifest } from './types';
-import { loadManifest, preloadBeats } from './content-loader';
+import { loadManifest, preloadBeats, setFogbellUrl } from './content-loader';
 import { buildFlatBeats, createEngine } from './engine';
 import { showModuleSelector } from './module-selector';
 import { createRenderer } from './renderer';
@@ -14,13 +14,27 @@ async function boot() {
   const initialMode = savedMode ?? 'dark';
   document.documentElement.setAttribute('data-mode', initialMode);
 
-  // Load manifest — check for ?notion=<slug> query param
+  // Load manifest — ?notion or ?notion=<workshop-slug> uses Notion API, otherwise static fallback
   const params = new URLSearchParams(window.location.search);
-  const notionSlug = params.get('notion');
-  const manifestUrl = notionSlug
-    ? `/api/notion?manifest=${encodeURIComponent(notionSlug)}`
-    : '/content/manifest.json';
-  const manifest: Manifest = await loadManifest(manifestUrl);
+  const hasNotion = params.has('notion');
+  const notionSlug = params.get('notion') ?? '';
+
+  let manifestUrl: string;
+  if (hasNotion) {
+    manifestUrl = notionSlug
+      ? `/api/notion?manifest=${encodeURIComponent(notionSlug)}`
+      : '/api/notion?manifest';
+  } else {
+    manifestUrl = '/content/manifest.json';
+  }
+
+  const data = await loadManifest(manifestUrl);
+  const manifest: Manifest = data;
+
+  // Pass FogBell URL from manifest to content loader (set by API when configured)
+  if (data.fogbellUrl) {
+    setFogbellUrl(data.fogbellUrl);
+  }
 
   // Hide progress during module selection
   progressFooter.style.display = 'none';

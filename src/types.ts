@@ -1,20 +1,9 @@
 export type BeatRole = 'statement' | 'paragraph' | 'signal' | 'breath' | 'section';
 
-export interface ContentSource {
-  type: 'file' | 'api' | 'inline' | 'notion';
-  path?: string;
-  url?: string;
-  text?: string;
-  transform?: string;
-  pageId?: string;
-}
-
 export interface Beat {
   id: string;
   role: BeatRole;
-  source?: ContentSource;
   content?: string;
-  fallback?: ContentSource;
   caption?: string;
   moduleId?: string;
 }
