@@ -12,10 +12,8 @@ async function boot() {
   const savedMode = sessionStorage.getItem('keel-color-mode') as 'light' | 'dark' | null;
   document.documentElement.setAttribute('data-mode', savedMode ?? 'dark');
 
-  // Load manifest — ?notion uses Notion API, otherwise static fallback
-  const manifestUrl = new URLSearchParams(window.location.search).has('notion')
-    ? '/api/notion?manifest'
-    : '/content/manifest.json';
+  // Load manifest from Notion API
+  const manifestUrl = '/api/notion?manifest';
 
   const manifest: Manifest = await loadManifest(manifestUrl);
 

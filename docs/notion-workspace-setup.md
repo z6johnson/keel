@@ -71,9 +71,8 @@ The 32-character hex string at the end is the page ID.
 
 | Environment     | URL                                      |
 |-----------------|------------------------------------------|
-| Local dev       | `http://localhost:3000/?notion`           |
-| Production      | `https://your-domain.vercel.app/?notion`  |
-| Static fallback | `http://localhost:3000/` (manifest.json)  |
+| Local dev       | `http://localhost:3000/`                  |
+| Production      | `https://your-domain.vercel.app/`         |
 
 ```bash
 npm run dev
