@@ -9,7 +9,7 @@ import type {
 // ---------- config ----------
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
-const NOTES_DB = process.env.NOTION_NOTES_DB ?? '';
+const PAGE_ID = process.env.NOTION_PAGE_ID ?? '';
 const FOGBELL_URL = process.env.FOGBELL_URL ?? '';
 
 // ---------- types ----------
@@ -26,20 +26,6 @@ interface Manifest {
   title: string;
   slides: Slide[];
   fogbellUrl?: string;
-}
-
-// ---------- Notion property readers ----------
-
-function titleText(page: PageObjectResponse): string {
-  const p = page.properties['Name'];
-  if (p?.type === 'title') return p.title.map(t => t.plain_text).join('');
-  return '';
-}
-
-function orderNumber(page: PageObjectResponse): number {
-  const p = page.properties['Order'];
-  if (p?.type === 'number') return p.number ?? 0;
-  return 0;
 }
 
 // ---------- rich text → markdown ----------
@@ -117,27 +103,29 @@ async function fetchBlocks(pageId: string): Promise<string> {
 }
 
 async function buildManifest(): Promise<Manifest> {
-  const db = await notion.databases.retrieve({ database_id: NOTES_DB });
-  const fullDb = db as { title: Array<{ plain_text: string }>; properties: Record<string, unknown> };
-  const title = fullDb.title.map(t => t.plain_text).join('') || 'Untitled';
-  const hasOrder = 'Order' in fullDb.properties;
+  const page = await notion.pages.retrieve({ page_id: PAGE_ID }) as PageObjectResponse;
+  const titleProp = Object.values(page.properties).find(p => p.type === 'title');
+  const title = titleProp?.type === 'title'
+    ? titleProp.title.map(t => t.plain_text).join('')
+    : 'Untitled';
 
-  const { results } = await notion.databases.query({
-    database_id: NOTES_DB,
-    sorts: hasOrder
-      ? [{ property: 'Order', direction: 'ascending' }]
-      : [{ timestamp: 'created_time', direction: 'ascending' }],
+  const { results } = await notion.blocks.children.list({
+    block_id: PAGE_ID,
     page_size: 100,
   });
 
-  const pages = results as PageObjectResponse[];
-  const bodies = await Promise.all(pages.map(p => fetchBlocks(p.id)));
+  const childPages = results.filter(
+    (b): b is BlockObjectResponse & { type: 'child_page' } =>
+      'type' in b && b.type === 'child_page'
+  );
 
-  const slides: Slide[] = pages.map((page, i) => {
+  const bodies = await Promise.all(childPages.map(p => fetchBlocks(p.id)));
+
+  const slides: Slide[] = childPages.map((block, i) => {
     const md = bodies[i];
     const role = inferRole(md);
     const slide: Slide = {
-      id: titleText(page) || `slide-${i + 1}`,
+      id: block.child_page.title || `slide-${i + 1}`,
       role,
     };
     if (role !== 'breath') slide.content = md.trim();
