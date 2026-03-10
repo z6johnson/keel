@@ -6,91 +6,90 @@ import type {
   RichTextItemResponse,
 } from '@notionhq/client/build/src/api-endpoints';
 
-const notion = new Client({ auth: process.env.NOTION_TOKEN });
+// ---------- config ----------
 
+const notion = new Client({ auth: process.env.NOTION_TOKEN });
 const NOTES_DB = process.env.NOTION_NOTES_DB ?? '';
 const FOGBELL_URL = process.env.FOGBELL_URL ?? '';
 
-// ---------- helpers ----------
+// ---------- types ----------
 
-function prop(page: PageObjectResponse, name: string) {
-  return page.properties[name];
+type SlideRole = 'statement' | 'paragraph' | 'signal' | 'breath';
+
+interface Slide {
+  id: string;
+  role: SlideRole;
+  content?: string;
 }
 
-function richTextPlain(rt: RichTextItemResponse[]): string {
-  return rt.map(t => t.plain_text).join('');
+interface Manifest {
+  title: string;
+  slides: Slide[];
+  fogbellUrl?: string;
 }
 
-function getPropText(page: PageObjectResponse, name: string): string {
-  const p = prop(page, name);
-  if (!p) return '';
-  if (p.type === 'title') return richTextPlain(p.title);
-  if (p.type === 'rich_text') return richTextPlain(p.rich_text);
-  if (p.type === 'url') return p.url ?? '';
+// ---------- Notion property readers ----------
+
+function titleText(page: PageObjectResponse): string {
+  const p = page.properties['Name'];
+  if (p?.type === 'title') return p.title.map(t => t.plain_text).join('');
   return '';
 }
 
-function getPropNumber(page: PageObjectResponse, name: string): number {
-  const p = prop(page, name);
+function orderNumber(page: PageObjectResponse): number {
+  const p = page.properties['Order'];
   if (p?.type === 'number') return p.number ?? 0;
   return 0;
 }
 
-// ---------- blocks → markdown ----------
+// ---------- rich text → markdown ----------
 
-function richTextToMarkdown(rt: RichTextItemResponse[]): string {
+function richText(rt: RichTextItemResponse[]): string {
   return rt
     .map(t => {
-      let text = t.plain_text;
-      if (t.annotations.bold) text = `**${text}**`;
-      if (t.annotations.italic) text = `*${text}*`;
-      if (t.annotations.code) text = `\`${text}\``;
-      if (t.type === 'text' && t.text.link) text = `[${text}](${t.text.link.url})`;
-      return text;
+      let s = t.plain_text;
+      if (t.annotations.bold) s = `**${s}**`;
+      if (t.annotations.italic) s = `*${s}*`;
+      if (t.annotations.code) s = `\`${s}\``;
+      if (t.type === 'text' && t.text.link) s = `[${s}](${t.text.link.url})`;
+      return s;
     })
     .join('');
 }
 
-function blocksToMarkdown(blocks: BlockObjectResponse[]): string {
+// ---------- blocks → markdown ----------
+
+function toMarkdown(blocks: BlockObjectResponse[]): string {
   const lines: string[] = [];
 
-  for (const block of blocks) {
-    switch (block.type) {
+  for (const b of blocks) {
+    switch (b.type) {
       case 'paragraph':
-        lines.push(richTextToMarkdown(block.paragraph.rich_text));
-        lines.push('');
+        lines.push(richText(b.paragraph.rich_text), '');
         break;
       case 'heading_1':
-        lines.push(`# ${richTextToMarkdown(block.heading_1.rich_text)}`);
-        lines.push('');
+        lines.push(`# ${richText(b.heading_1.rich_text)}`, '');
         break;
       case 'heading_2':
-        lines.push(`## ${richTextToMarkdown(block.heading_2.rich_text)}`);
-        lines.push('');
+        lines.push(`## ${richText(b.heading_2.rich_text)}`, '');
         break;
       case 'heading_3':
-        lines.push(`### ${richTextToMarkdown(block.heading_3.rich_text)}`);
-        lines.push('');
+        lines.push(`### ${richText(b.heading_3.rich_text)}`, '');
         break;
       case 'bulleted_list_item':
-        lines.push(`- ${richTextToMarkdown(block.bulleted_list_item.rich_text)}`);
+        lines.push(`- ${richText(b.bulleted_list_item.rich_text)}`);
         break;
       case 'numbered_list_item':
-        lines.push(`1. ${richTextToMarkdown(block.numbered_list_item.rich_text)}`);
+        lines.push(`1. ${richText(b.numbered_list_item.rich_text)}`);
         break;
       case 'quote':
-        lines.push(`> ${richTextToMarkdown(block.quote.rich_text)}`);
-        lines.push('');
+        lines.push(`> ${richText(b.quote.rich_text)}`, '');
         break;
       case 'divider':
-        lines.push('---');
-        lines.push('');
+        lines.push('---', '');
         break;
       case 'callout':
-        lines.push(richTextToMarkdown(block.callout.rich_text));
-        lines.push('');
-        break;
-      default:
+        lines.push(richText(b.callout.rich_text), '');
         break;
     }
   }
@@ -100,50 +99,30 @@ function blocksToMarkdown(blocks: BlockObjectResponse[]): string {
 
 // ---------- role inference ----------
 
-type SlideRole = 'statement' | 'paragraph' | 'signal' | 'breath';
-
-function isUrl(text: string): boolean {
-  return /^https?:\/\/\S+$/.test(text.trim());
-}
-
-function inferRole(markdown: string): SlideRole {
-  const trimmed = markdown.trim();
-
-  if (!trimmed) return 'breath';
-  if (trimmed === '{{signals}}') return 'signal';
-  if (isUrl(trimmed)) return 'signal';
-
-  const hasBlocks = /^(?:#{1,3} |- |\d+\. |> |---)/m.test(trimmed);
-  if (hasBlocks) return 'paragraph';
-  if (/\n\s*\n/.test(trimmed)) return 'paragraph';
-  if (trimmed.length <= 140) return 'statement';
-
+function inferRole(md: string): SlideRole {
+  const text = md.trim();
+  if (!text) return 'breath';
+  if (text === '{{signals}}' || /^https?:\/\/\S+$/.test(text)) return 'signal';
+  if (/^(?:#{1,3} |- |\d+\. |> |---)/m.test(text)) return 'paragraph';
+  if (/\n\s*\n/.test(text)) return 'paragraph';
+  if (text.length <= 140) return 'statement';
   return 'paragraph';
 }
 
-// ---------- manifest builder ----------
+// ---------- build manifest ----------
 
-async function loadPageBody(pageId: string): Promise<string> {
-  const blocks = await notion.blocks.children.list({
-    block_id: pageId,
-    page_size: 100,
-  });
-
-  const blockResults = blocks.results.filter(
-    (b): b is BlockObjectResponse => 'type' in b
-  );
-
-  return blocksToMarkdown(blockResults);
+async function fetchBlocks(pageId: string): Promise<string> {
+  const { results } = await notion.blocks.children.list({ block_id: pageId, page_size: 100 });
+  return toMarkdown(results.filter((b): b is BlockObjectResponse => 'type' in b));
 }
 
-async function buildManifest() {
-  const dbMeta = await notion.databases.retrieve({ database_id: NOTES_DB });
-  const dbTitle = dbMeta.title.map(t => t.plain_text).join('') || 'Untitled';
+async function buildManifest(): Promise<Manifest> {
+  const db = await notion.databases.retrieve({ database_id: NOTES_DB });
+  const fullDb = db as { title: Array<{ plain_text: string }>; properties: Record<string, unknown> };
+  const title = fullDb.title.map(t => t.plain_text).join('') || 'Untitled';
+  const hasOrder = 'Order' in fullDb.properties;
 
-  // Check if Order property exists for sorting
-  const hasOrder = 'Order' in dbMeta.properties;
-
-  const query = await notion.databases.query({
+  const { results } = await notion.databases.query({
     database_id: NOTES_DB,
     sorts: hasOrder
       ? [{ property: 'Order', direction: 'ascending' }]
@@ -151,29 +130,21 @@ async function buildManifest() {
     page_size: 100,
   });
 
-  const pages = query.results as PageObjectResponse[];
+  const pages = results as PageObjectResponse[];
+  const bodies = await Promise.all(pages.map(p => fetchBlocks(p.id)));
 
-  // Fetch all page bodies in parallel
-  const bodies = await Promise.all(pages.map(p => loadPageBody(p.id)));
-
-  // Build flat slide array
-  const slides = pages.map((page, i) => {
-    const markdown = bodies[i];
-    const role = inferRole(markdown);
-    const id = getPropText(page, 'Name') || `slide-${i + 1}`;
-
-    const slide: Record<string, unknown> = { id, role };
-
-    if (role === 'signal') {
-      slide.content = markdown.trim();
-    } else if (role !== 'breath') {
-      slide.content = markdown;
-    }
-
+  const slides: Slide[] = pages.map((page, i) => {
+    const md = bodies[i];
+    const role = inferRole(md);
+    const slide: Slide = {
+      id: titleText(page) || `slide-${i + 1}`,
+      role,
+    };
+    if (role !== 'breath') slide.content = md.trim();
     return slide;
   });
 
-  return { title: dbTitle, slides, fogbellUrl: FOGBELL_URL || undefined };
+  return { title, slides, fogbellUrl: FOGBELL_URL || undefined };
 }
 
 // ---------- handler ----------
@@ -184,14 +155,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const { manifest } = req.query;
-
-    if (manifest !== undefined) {
-      const result = await buildManifest();
+    if (req.query.manifest !== undefined) {
+      const manifest = await buildManifest();
       res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
-      return res.status(200).json(result);
+      return res.status(200).json(manifest);
     }
-
     return res.status(400).json({ error: 'Use ?manifest to load the presentation.' });
   } catch (err) {
     console.error('Notion API error:', err);
