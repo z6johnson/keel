@@ -1,6 +1,6 @@
 # Notion Setup for Keel
 
-Set up a single Notion database to power Keel presentations.
+Set up a Notion database to power Keel presentations. One page per slide.
 
 ---
 
@@ -9,71 +9,57 @@ Set up a single Notion database to power Keel presentations.
 1. Go to [notion.so/my-integrations](https://www.notion.so/my-integrations)
 2. Click **"+ New integration"**
 3. Name it **`Keel`**, select your workspace, click **Submit**
-4. Under **Capabilities**, enable: Read content, Update content, Insert content
+4. Under **Capabilities**, enable: Read content
 5. Copy the secret token (`secret_...`) — this becomes `NOTION_TOKEN`
 
 ---
 
-## 2. Create the Notes Database
+## 2. Create the Workshop Database
 
-1. Create a new page in Notion (this page's title becomes your presentation title)
+1. Create a new page in Notion (the database title becomes your presentation title)
 2. Inside it, type `/database` → select **"Database - Inline"**
-3. Rename the database to **`Notes`** (or any name you like)
 
-### Add these properties:
+### Properties:
 
 | Property | Type | Purpose |
 |----------|------|---------|
-| Name | Title | Human label for the note (already exists) |
-| Module | Select | Which section: "The Landscape", "The Opportunity", etc. |
-| Order | Number | Position within the module (use gaps: 10, 20, 30) |
-| Workshop | Select | *(Optional)* Only needed if one database holds multiple workshops |
+| Name | Title | Label for your own navigation in Notion |
+| Order | Number | Sort position (use gaps: 10, 20, 30) |
 
-That's it — 3 properties.
+That's it — two properties. If you omit Order, slides sort by creation time.
 
 ### Share with the integration:
 
 1. Click **Share** on the parent page
-2. Invite your **Keel** integration with **"Can edit"** access
+2. Invite your **Keel** integration with **"Can view"** access
 
 ---
 
-## 3. Write Your Content
+## 3. Write Your Slides
 
-Every row in the Notes database is a presentation beat. The page body **is** the content.
+Every row in the database is a slide. Open a row as a page and write — Keel auto-detects what kind of slide it is:
 
-### How it works:
-
-- **Open a row as a page** and write using Notion's normal editor
-- Keel auto-detects what kind of beat it is from the content:
-
-| Content | Keel renders as |
-|---------|----------------|
-| Empty page (no body) | **Pause** — a centered dot (·) |
-| Short single sentence (≤ 140 chars) | **Statement** — large heading |
+| What you write | What Keel shows |
+|----------------|-----------------|
+| Nothing (empty page) | **Breath** — a centered pause dot (·) |
+| A short sentence (≤ 140 chars) | **Statement** — large heading |
 | Longer text, lists, headings | **Paragraph** — body prose |
-| Page body is exactly `{{signals}}` | **Live signals** — FogBell card grid |
+| A URL (e.g. `https://api.example.com/signals`) | **Signal cards** — fetched from that URL |
+| `{{signals}}` | **Signal cards** — fetched from configured beacon |
 
 ### Reordering:
 
-Set the **Order** number on each note. Use gaps (10, 20, 30) so you can insert notes later without renumbering everything.
-
-### Modules:
-
-Use the **Module** select property to tag each note. Keel groups notes by module and shows a module selector before the presentation begins.
-
-Module order is determined by the lowest Order number in each module. So if "The Landscape" has notes starting at Order 10 and "The Opportunity" starts at Order 100, Landscape comes first.
+Set the **Order** number on each page. Use gaps (10, 20, 30) so you can insert slides later without renumbering.
 
 ---
 
-## 4. Beacon Integration
+## 4. Beacon / Agent Integration
 
-Beacon-generated content works the same way — it's just another note in the database:
+Beacon or agent-generated content works the same way — it's just another page in the database:
 
-1. Beacon writes AI-generated briefing content into a Note page body
-2. Tag the note with the appropriate Module
-3. Set an Order number
-4. Keel picks it up automatically — no special treatment needed
+1. Write content into a page body (or paste a signal URL)
+2. Set an Order number
+3. Keel picks it up automatically
 
 ---
 
@@ -84,12 +70,12 @@ Set these in your Vercel project settings:
 | Variable | Value | Required |
 |----------|-------|----------|
 | `NOTION_TOKEN` | Integration secret (`secret_...`) | Yes |
-| `NOTION_NOTES_DB` | Notes database ID (32-char hex from the database URL) | Yes |
-| `FOGBELL_URL` | FogBell API endpoint for live signals | Only if using `{{signals}}` |
+| `NOTION_NOTES_DB` | Database ID (32-char hex from the database URL) | Yes |
+| `FOGBELL_URL` | Default signal API endpoint | Only if using `{{signals}}` |
 
 ### Finding the database ID:
 
-1. Open the Notes database as a full page
+1. Open the database as a full page
 2. Look at the URL: `https://www.notion.so/workspace/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?v=...`
 3. The 32-character hex string before `?v=` is the ID
 4. Format with hyphens: `XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX`
@@ -100,10 +86,9 @@ Set these in your Vercel project settings:
 
 | Environment | URL |
 |-------------|-----|
-| Local dev | `http://localhost:5173/?notion` |
-| With workshop filter | `http://localhost:5173/?notion=workshop-slug` |
+| Local dev | `http://localhost:3000/?notion` |
 | Production | `https://your-domain.vercel.app/?notion` |
-| Static fallback | `http://localhost:5173/` (uses manifest.json) |
+| Static fallback | `http://localhost:3000/` (uses manifest.json) |
 
 Start local dev:
 
@@ -115,8 +100,8 @@ npm run dev
 
 ## 7. Verification Checklist
 
-- [ ] Notes database has Name, Module, and Order properties
-- [ ] Integration has "Can edit" access to the database's parent page
-- [ ] `NOTION_TOKEN` and `NOTION_NOTES_DB` are set in Vercel environment variables
-- [ ] At least one note exists with a Module tag and content in the page body
-- [ ] `/?notion` loads the presentation and shows the module selector
+- [ ] Database has Name and Order properties
+- [ ] Integration has access to the database's parent page
+- [ ] `NOTION_TOKEN` and `NOTION_NOTES_DB` are set in environment variables
+- [ ] At least one page exists with content in the body
+- [ ] `/?notion` loads the presentation and goes straight to the first slide

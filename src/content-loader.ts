@@ -1,4 +1,4 @@
-import type { Beat, Signal } from './types';
+import type { Slide, Signal } from './types';
 import { renderMarkdown } from './markdown';
 
 export async function loadManifest(path: string) {
@@ -7,18 +7,17 @@ export async function loadManifest(path: string) {
   return res.json();
 }
 
-export async function loadBeatContent(beat: Beat): Promise<string> {
-  // Breath beats — no content
-  if (beat.role === 'breath') return '';
+export async function loadSlideContent(slide: Slide): Promise<string> {
+  if (slide.role === 'breath') return '';
 
-  // Signal beats — fetch live data from FogBell API
-  if (beat.role === 'signal') {
-    return loadSignals();
+  if (slide.role === 'signal') {
+    const src = slide.content?.trim() ?? '';
+    const url = isUrl(src) ? src : fogbellUrl;
+    return loadSignals(url);
   }
 
-  // All other beats — content is pre-loaded in the manifest
-  if (beat.content) {
-    return renderMarkdown(beat.content);
+  if (slide.content) {
+    return renderMarkdown(slide.content);
   }
 
   return '';
@@ -32,8 +31,12 @@ export function setFogbellUrl(url: string) {
   fogbellUrl = url;
 }
 
-async function loadSignals(): Promise<string> {
-  if (!fogbellUrl) {
+function isUrl(text: string): boolean {
+  return /^https?:\/\/\S+$/.test(text);
+}
+
+async function loadSignals(url: string): Promise<string> {
+  if (!url) {
     return '<p class="signal-empty">No signals source configured.</p>';
   }
 
@@ -47,10 +50,10 @@ async function loadSignals(): Promise<string> {
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
 
-    const res = await fetch(fogbellUrl, { headers, signal: controller.signal });
+    const res = await fetch(url, { headers, signal: controller.signal });
     if (!res.ok) throw new Error(`API error: ${res.status}`);
     const data = await res.json();
-    return renderSignalCards(normalizeFogBellData(data));
+    return renderSignalCards(normalizeSignalData(data));
   } catch {
     return '<p class="signal-empty">Signal data is temporarily unavailable.</p>';
   } finally {
@@ -63,7 +66,7 @@ function getApiKey(): string | undefined {
   return params.get('fogbell_key') ?? (import.meta as unknown as Record<string, Record<string, string>>).env?.VITE_FOGBELL_KEY ?? undefined;
 }
 
-function normalizeFogBellData(data: unknown): Signal[] {
+function normalizeSignalData(data: unknown): Signal[] {
   const arr: unknown[] = Array.isArray(data)
     ? data
     : (data as Record<string, unknown>).signals as unknown[]
@@ -108,23 +111,23 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
-export async function preloadBeats(
-  beats: Beat[],
+export async function preloadSlides(
+  slides: Slide[],
   startIndex: number,
   cache: Map<string, string>,
   count = 3
 ): Promise<void> {
   const targets = [];
-  for (let i = startIndex; i < Math.min(startIndex + count, beats.length); i++) {
-    if (!cache.has(beats[i].id)) {
+  for (let i = startIndex; i < Math.min(startIndex + count, slides.length); i++) {
+    if (!cache.has(slides[i].id)) {
       targets.push(i);
     }
   }
 
   await Promise.allSettled(
     targets.map(async (i) => {
-      const content = await loadBeatContent(beats[i]);
-      cache.set(beats[i].id, content);
+      const content = await loadSlideContent(slides[i]);
+      cache.set(slides[i].id, content);
     })
   );
 }

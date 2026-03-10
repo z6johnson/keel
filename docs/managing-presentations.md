@@ -1,19 +1,18 @@
 # Managing Keel Presentations
 
-A guide for writing, organizing, and presenting content with Keel and Notion.
+A guide for writing, organizing, and presenting with Keel and Notion.
 
 > **First-time setup?** See [Notion Setup](notion-workspace-setup.md) first.
 
 ---
 
-## Writing Notes
+## Writing Slides
 
-Every presentation beat is a **note** — a row in your Notion database. The page body is the content.
+Every slide is a **page** — a row in your Notion database. The page body is the content.
 
-1. Add a row to the Notes database
-2. Set the **Module** (e.g., "The Landscape")
-3. Set the **Order** number (e.g., 10, 20, 30)
-4. Open the row and write your content
+1. Add a row to the Workshop database
+2. Set the **Order** number (e.g., 10, 20, 30)
+3. Open the row and write your content
 
 That's it. Keel infers the visual treatment automatically:
 
@@ -22,7 +21,8 @@ That's it. Keel infers the visual treatment automatically:
 | Nothing (empty page) | Visual pause (·) |
 | A short sentence | Large statement heading |
 | Multiple paragraphs, lists, headings | Body text prose |
-| `{{signals}}` | Live FogBell signal cards |
+| A URL (e.g. `https://api.example.com/data`) | Signal cards fetched from that URL |
+| `{{signals}}` | Signal cards from configured beacon |
 
 ### Supported Notion blocks
 
@@ -42,31 +42,11 @@ That's it. Keel infers the visual treatment automatically:
 
 ---
 
-## Organizing Modules
+## Ordering Slides
 
-Modules are the major sections of your presentation. They come from the **Module** select property on each note.
+Use the **Order** number property to control slide sequence. Use gaps (10, 20, 30) so you can insert slides without renumbering.
 
-- To create a new module: add a new option to the Module select
-- To reorder modules: adjust the Order numbers so each module's first note is in the right sequence
-- Module estimated time: auto-calculated at ~3 minutes per note
-
-### Tips
-
-- Use **Order gaps** (10, 20, 30) so you can insert notes without renumbering
-- Drag notes in Notion's database view to visually organize, then update Order numbers to match
-- Group your database view by Module for easy management
-
----
-
-## Multiple Workshops
-
-If you need multiple workshops in one database:
-
-1. Add the optional **Workshop** select property to your Notes database
-2. Tag each note with its workshop (e.g., "ai-strategy-2026")
-3. Access with: `/?notion=ai-strategy-2026`
-
-If you only have one workshop, skip the Workshop property entirely and use `/?notion`.
+If you omit the Order property, slides sort by creation time.
 
 ---
 
@@ -74,30 +54,19 @@ If you only have one workshop, skip the Workshop property entirely and use `/?no
 
 - Edit the page body in Notion — changes appear after cache expires (~5 minutes)
 - Redeploy on Vercel to clear cache immediately
-- Add/remove notes by adding/deleting database rows
+- Add/remove slides by adding/deleting database rows
 - Reorder by changing the Order property
 
 ---
 
 ## Keyboard Controls
 
-### During module selection
-
 | Key | Action |
 |-----|--------|
-| `↑` / `↓` | Navigate modules |
-| `Space` | Toggle module on/off |
-| `Enter` | Start presentation |
-| `T` | Toggle color mode |
-
-### During presentation
-
-| Key | Action |
-|-----|--------|
-| `→` / `↓` / `Space` / `Page Down` | Next beat |
-| `←` / `↑` / `Page Up` | Previous beat |
-| `Home` | First beat |
-| `End` | Last beat |
+| `→` / `↓` / `Space` / `Page Down` | Next slide |
+| `←` / `↑` / `Page Up` | Previous slide |
+| `Home` | First slide |
+| `End` | Last slide |
 | `T` | Toggle light/dark mode |
 | `F` | Toggle fullscreen |
 
@@ -107,8 +76,7 @@ If you only have one workshop, skip the Workshop property entirely and use `/?no
 
 | Problem | Fix |
 |---------|-----|
-| Blank presentation | Check that notes have a Module tag and Order number |
+| Blank presentation | Check that pages have content in the body |
 | Content not updating | Wait 5 minutes for cache, or redeploy |
-| Module missing | Ensure at least one note has that Module select value |
 | Statement renders as prose | Content is too long or has block elements — shorten to ≤ 140 chars |
-| Signals show "not configured" | Set `FOGBELL_URL` environment variable |
+| Signals show "not configured" | Set `FOGBELL_URL` env var, or paste a URL directly into the slide |

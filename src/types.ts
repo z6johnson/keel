@@ -1,24 +1,15 @@
-export type BeatRole = 'statement' | 'paragraph' | 'signal' | 'breath' | 'section';
+export type SlideRole = 'statement' | 'paragraph' | 'signal' | 'breath';
 
-export interface Beat {
+export interface Slide {
   id: string;
-  role: BeatRole;
+  role: SlideRole;
   content?: string;
-  caption?: string;
-  moduleId?: string;
-}
-
-export interface Module {
-  id: string;
-  title: string;
-  estimatedMinutes: number;
-  beats: Beat[];
 }
 
 export interface Manifest {
   title: string;
-  modules: Module[];
-  sequence: string[];
+  slides: Slide[];
+  fogbellUrl?: string;
 }
 
 export interface Signal {
@@ -31,21 +22,16 @@ export interface Signal {
 }
 
 export interface EngineState {
-  flatBeats: Beat[];
+  slides: Slide[];
   currentIndex: number;
   colorMode: 'light' | 'dark';
   contentCache: Map<string, string>;
-  modules: Module[];
-  selectedModuleIds: string[];
   isTransitioning: boolean;
 }
 
-export interface BeatInfo {
-  beat: Beat;
+export interface SlideInfo {
+  slide: Slide;
   content: string;
   index: number;
   total: number;
-  moduleTitle: string;
-  moduleIndex: number;
-  moduleTotal: number;
 }
