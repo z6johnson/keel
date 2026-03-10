@@ -8,9 +8,8 @@ import type {
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
-const PRESENTATIONS_DB = process.env.NOTION_PRESENTATIONS_DB ?? '';
-const MODULES_DB = process.env.NOTION_MODULES_DB ?? '';
-const BEATS_DB = process.env.NOTION_BEATS_DB ?? '';
+const NOTES_DB = process.env.NOTION_NOTES_DB ?? '';
+const FOGBELL_URL = process.env.FOGBELL_URL ?? '';
 
 // ---------- helpers ----------
 
@@ -43,10 +42,8 @@ function getPropSelect(page: PageObjectResponse, name: string): string {
   return '';
 }
 
-function getPropRelationIds(page: PageObjectResponse, name: string): string[] {
-  const p = prop(page, name);
-  if (p?.type === 'relation') return p.relation.map(r => r.id);
-  return [];
+function slugify(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
 // ---------- blocks → markdown ----------
@@ -111,149 +108,42 @@ function blocksToMarkdown(blocks: BlockObjectResponse[]): string {
   return lines.join('\n').trim();
 }
 
+// ---------- role inference ----------
+
+type BeatRole = 'statement' | 'paragraph' | 'signal' | 'breath';
+
+function inferRole(markdown: string): BeatRole {
+  const trimmed = markdown.trim();
+
+  // Empty → breath
+  if (!trimmed) return 'breath';
+
+  // Signals directive
+  if (trimmed === '{{signals}}') return 'signal';
+
+  // Check for block-level elements (headings, lists, blockquotes, hr, multiple paragraphs)
+  const hasBlocks = /^(?:#{1,3} |- |\d+\. |> |---)/m.test(trimmed);
+  if (hasBlocks) return 'paragraph';
+
+  // Multiple paragraphs (double newline separated)
+  if (/\n\s*\n/.test(trimmed)) return 'paragraph';
+
+  // Short single paragraph → statement
+  if (trimmed.length <= 140) return 'statement';
+
+  return 'paragraph';
+}
+
 // ---------- manifest builder ----------
 
-interface NotionBeat {
-  id: string;
-  beatId: string;
-  role: string;
-  order: number;
-  caption: string;
-  sourceType: string;
-  sourceUrl: string;
-  sourceTransform: string;
-  fallbackText: string;
+interface NoteRow {
   pageId: string;
-}
-
-interface NotionModule {
-  id: string;
-  moduleId: string;
   title: string;
+  module: string;
   order: number;
-  estimatedMinutes: number;
-  presentationId: string;
 }
 
-async function buildManifest(slug: string) {
-  // 1. Find presentation by slug
-  const presQuery = await notion.databases.query({
-    database_id: PRESENTATIONS_DB,
-    filter: { property: 'Slug', rich_text: { equals: slug } },
-    page_size: 1,
-  });
-
-  if (presQuery.results.length === 0) return null;
-
-  const presPage = presQuery.results[0] as PageObjectResponse;
-  const presTitle = getPropText(presPage, 'Title');
-  const presId = presPage.id;
-
-  // 2. Get modules for this presentation
-  const modQuery = await notion.databases.query({
-    database_id: MODULES_DB,
-    filter: { property: 'Presentation', relation: { contains: presId } },
-  });
-
-  const modules: NotionModule[] = (modQuery.results as PageObjectResponse[]).map(p => ({
-    id: p.id,
-    moduleId: getPropText(p, 'ID'),
-    title: getPropText(p, 'Title'),
-    order: getPropNumber(p, 'Order'),
-    estimatedMinutes: getPropNumber(p, 'Estimated Minutes'),
-    presentationId: presId,
-  }));
-  modules.sort((a, b) => a.order - b.order);
-
-  // 3. Get all beats for these modules
-  const modulePageIds = modules.map(m => m.id);
-  const beatQuery = await notion.databases.query({
-    database_id: BEATS_DB,
-    filter: {
-      or: modulePageIds.map(mid => ({
-        property: 'Module',
-        relation: { contains: mid },
-      })),
-    },
-    page_size: 100,
-  });
-
-  const allBeats: (NotionBeat & { modulePageId: string })[] = (
-    beatQuery.results as PageObjectResponse[]
-  ).map(p => {
-    const moduleRels = getPropRelationIds(p, 'Module');
-    return {
-      id: p.id,
-      beatId: getPropText(p, 'ID'),
-      role: getPropSelect(p, 'Role').toLowerCase(),
-      order: getPropNumber(p, 'Order'),
-      caption: getPropText(p, 'Caption'),
-      sourceType: getPropSelect(p, 'Source Type'),
-      sourceUrl: getPropText(p, 'Source URL'),
-      sourceTransform: getPropText(p, 'Source Transform'),
-      fallbackText: getPropText(p, 'Fallback Text'),
-      pageId: p.id,
-      modulePageId: moduleRels[0] ?? '',
-    };
-  });
-
-  // 4. Assemble manifest
-  const sequence = modules.map(m => m.moduleId);
-
-  const manifestModules = modules.map(mod => {
-    const modBeats = allBeats
-      .filter(b => b.modulePageId === mod.id)
-      .sort((a, b) => a.order - b.order);
-
-    const beats = modBeats.map(b => {
-      const beat: Record<string, unknown> = {
-        id: b.beatId,
-        role: b.role,
-      };
-
-      if (b.caption) beat.caption = b.caption;
-
-      const srcType = b.sourceType.toLowerCase();
-
-      if (srcType === 'api' && b.sourceUrl) {
-        beat.source = {
-          type: 'api',
-          url: b.sourceUrl,
-          ...(b.sourceTransform ? { transform: b.sourceTransform } : {}),
-        };
-        if (b.fallbackText) {
-          beat.fallback = { type: 'inline', text: b.fallbackText };
-        }
-      } else if (srcType === 'notion' || (srcType === '' && b.role !== 'breath')) {
-        // Notion page body — use the beat's page ID as source
-        beat.source = {
-          type: 'notion',
-          pageId: b.pageId,
-        };
-      }
-      // breath beats with no source type get no source (empty render)
-
-      return beat;
-    });
-
-    return {
-      id: mod.moduleId,
-      title: mod.title,
-      estimatedMinutes: mod.estimatedMinutes,
-      beats,
-    };
-  });
-
-  return {
-    title: presTitle,
-    sequence,
-    modules: manifestModules,
-  };
-}
-
-// ---------- beat content loader ----------
-
-async function loadBeatPage(pageId: string): Promise<string> {
+async function loadPageBody(pageId: string): Promise<string> {
   const blocks = await notion.blocks.children.list({
     block_id: pageId,
     page_size: 100,
@@ -266,6 +156,89 @@ async function loadBeatPage(pageId: string): Promise<string> {
   return blocksToMarkdown(blockResults);
 }
 
+async function buildManifest(workshopSlug?: string) {
+  // 1. Get database title for the presentation name
+  const dbMeta = await notion.databases.retrieve({ database_id: NOTES_DB });
+  const dbTitle = dbMeta.title.map(t => t.plain_text).join('') || 'Untitled';
+
+  // 2. Query all notes (optionally filtered by Workshop)
+  const filter = workshopSlug
+    ? { property: 'Workshop', select: { equals: workshopSlug } }
+    : undefined;
+
+  const query = await notion.databases.query({
+    database_id: NOTES_DB,
+    filter,
+    page_size: 100,
+  });
+
+  const notes: NoteRow[] = (query.results as PageObjectResponse[]).map(p => ({
+    pageId: p.id,
+    title: getPropText(p, 'Name'),
+    module: getPropSelect(p, 'Module'),
+    order: getPropNumber(p, 'Order'),
+  }));
+
+  // 3. Group by module
+  const moduleMap = new Map<string, NoteRow[]>();
+  for (const note of notes) {
+    const key = note.module || 'Untitled';
+    if (!moduleMap.has(key)) moduleMap.set(key, []);
+    moduleMap.get(key)!.push(note);
+  }
+
+  // Sort notes within each module by Order
+  for (const group of moduleMap.values()) {
+    group.sort((a, b) => a.order - b.order);
+  }
+
+  // Sort modules by their first note's Order value
+  const sortedModules = [...moduleMap.entries()].sort(
+    (a, b) => (a[1][0]?.order ?? 0) - (b[1][0]?.order ?? 0)
+  );
+
+  // 4. Fetch all page bodies in parallel
+  const allPageIds = notes.map(n => n.pageId);
+  const bodies = await Promise.all(allPageIds.map(id => loadPageBody(id)));
+  const bodyMap = new Map<string, string>();
+  allPageIds.forEach((id, i) => bodyMap.set(id, bodies[i]));
+
+  // 5. Build manifest
+  const sequence: string[] = [];
+  const modules = sortedModules.map(([moduleName, moduleNotes]) => {
+    const moduleId = slugify(moduleName);
+    sequence.push(moduleId);
+
+    const beats = moduleNotes.map((note, idx) => {
+      const markdown = bodyMap.get(note.pageId) ?? '';
+      const role = inferRole(markdown);
+
+      const beat: Record<string, unknown> = {
+        id: `${moduleId}-${idx + 1}`,
+        role,
+      };
+
+      // Inline content for non-signal beats
+      if (role === 'signal') {
+        beat.content = '{{signals}}';
+      } else if (role !== 'breath') {
+        beat.content = markdown;
+      }
+
+      return beat;
+    });
+
+    return {
+      id: moduleId,
+      title: moduleName,
+      estimatedMinutes: Math.max(1, moduleNotes.length * 3),
+      beats,
+    };
+  });
+
+  return { title: dbTitle, sequence, modules, fogbellUrl: FOGBELL_URL || undefined };
+}
+
 // ---------- handler ----------
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -275,27 +248,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const { manifest: slug, beat: beatPageId } = req.query;
+    const { manifest, beat: beatPageId } = req.query;
 
     // Mode 1: Build manifest from Notion
-    if (typeof slug === 'string') {
+    if (manifest !== undefined) {
+      const slug = typeof manifest === 'string' && manifest !== '' ? manifest : undefined;
       const result = await buildManifest(slug);
-      if (!result) return res.status(404).json({ error: 'Presentation not found' });
 
       res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
       return res.status(200).json(result);
     }
 
-    // Mode 2: Load a single beat's page content
+    // Mode 2: Load a single page's content (backward compat)
     if (typeof beatPageId === 'string') {
-      const markdown = await loadBeatPage(beatPageId);
+      const markdown = await loadPageBody(beatPageId);
 
       res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       return res.status(200).send(markdown);
     }
 
-    return res.status(400).json({ error: 'Provide ?manifest=<slug> or ?beat=<pageId>' });
+    return res.status(400).json({ error: 'Provide ?manifest or ?manifest=<workshop-slug> or ?beat=<pageId>' });
   } catch (err) {
     console.error('Notion API error:', err);
     return res.status(500).json({ error: 'Internal server error' });

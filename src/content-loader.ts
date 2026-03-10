@@ -1,4 +1,4 @@
-import type { Beat, ContentSource, Signal } from './types';
+import type { Beat, Signal } from './types';
 import { renderMarkdown } from './markdown';
 
 export async function loadManifest(path: string) {
@@ -8,57 +8,35 @@ export async function loadManifest(path: string) {
 }
 
 export async function loadBeatContent(beat: Beat): Promise<string> {
-  // Inline content
+  // Breath beats — no content
+  if (beat.role === 'breath') return '';
+
+  // Signal beats — fetch live data from FogBell API
+  if (beat.role === 'signal') {
+    return loadSignals();
+  }
+
+  // All other beats — content is pre-loaded in the manifest
   if (beat.content) {
-    return beat.role === 'breath' ? beat.content : renderMarkdown(beat.content);
-  }
-
-  // No source = empty (breath beats)
-  if (!beat.source) return '';
-
-  try {
-    return await loadFromSource(beat.source, beat.role);
-  } catch {
-    // Try fallback
-    if (beat.fallback) {
-      try {
-        return await loadFromSource(beat.fallback, beat.role);
-      } catch {
-        return '';
-      }
-    }
-    return '';
-  }
-}
-
-async function loadFromSource(source: ContentSource, _role: string): Promise<string> {
-  if (source.type === 'inline') {
-    return renderMarkdown(source.text ?? '');
-  }
-
-  if (source.type === 'file') {
-    return loadFileContent(source.path ?? '');
-  }
-
-  if (source.type === 'api') {
-    return loadApiContent(source.url ?? '', source.transform);
-  }
-
-  if (source.type === 'notion') {
-    return loadNotionContent(source.pageId ?? '');
+    return renderMarkdown(beat.content);
   }
 
   return '';
 }
 
-async function loadFileContent(path: string): Promise<string> {
-  const res = await fetch(`/content/${path}`);
-  if (!res.ok) throw new Error(`Failed to load file: ${res.status}`);
-  const text = await res.text();
-  return renderMarkdown(text);
+// ---------- signals ----------
+
+let fogbellUrl = '';
+
+export function setFogbellUrl(url: string) {
+  fogbellUrl = url;
 }
 
-async function loadApiContent(url: string, transform?: string): Promise<string> {
+async function loadSignals(): Promise<string> {
+  if (!fogbellUrl) {
+    return '<p class="signal-empty">No signals source configured.</p>';
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
 
@@ -69,25 +47,15 @@ async function loadApiContent(url: string, transform?: string): Promise<string> 
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
 
-    const res = await fetch(url, { headers, signal: controller.signal });
+    const res = await fetch(fogbellUrl, { headers, signal: controller.signal });
     if (!res.ok) throw new Error(`API error: ${res.status}`);
     const data = await res.json();
-
-    if (transform === 'fogbell') {
-      return renderSignals(normalizeFogBellData(data));
-    }
-
-    return renderMarkdown(JSON.stringify(data));
+    return renderSignalCards(normalizeFogBellData(data));
+  } catch {
+    return '<p class="signal-empty">Signal data is temporarily unavailable.</p>';
   } finally {
     clearTimeout(timeout);
   }
-}
-
-async function loadNotionContent(pageId: string): Promise<string> {
-  const res = await fetch(`/api/notion?beat=${encodeURIComponent(pageId)}`);
-  if (!res.ok) throw new Error(`Notion beat error: ${res.status}`);
-  const text = await res.text();
-  return renderMarkdown(text);
 }
 
 function getApiKey(): string | undefined {
@@ -115,7 +83,7 @@ function normalizeFogBellData(data: unknown): Signal[] {
   });
 }
 
-function renderSignals(signals: Signal[]): string {
+function renderSignalCards(signals: Signal[]): string {
   if (signals.length === 0) {
     return '<p class="signal-empty">No signals available.</p>';
   }
