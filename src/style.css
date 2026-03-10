@@ -148,6 +148,115 @@ body {
   font-weight: 600;
 }
 
+/* --- Prose: Headings --- */
+
+.prose h1 {
+  font-family: 'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 300;
+  font-size: clamp(2.2rem, 4vw, 4rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75em;
+  text-wrap: balance;
+}
+
+.prose h2 {
+  font-family: 'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.6rem, 3vw, 2.8rem);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+  text-wrap: balance;
+}
+
+.prose h3 {
+  font-family: 'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 500;
+  font-size: clamp(1.2rem, 2vw, 1.8rem);
+  line-height: 1.2;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+
+/* --- Prose: Lists --- */
+
+.prose ul,
+.prose ol {
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.prose ul {
+  list-style-type: disc;
+}
+
+.prose ol {
+  list-style-type: decimal;
+}
+
+.prose li {
+  margin-bottom: 0.35em;
+  line-height: 1.55;
+}
+
+.prose li:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Prose: Blockquote --- */
+
+.prose blockquote {
+  border-left: 3px solid var(--rule);
+  padding-left: 1.25em;
+  margin-bottom: 1em;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* --- Prose: Inline Code --- */
+
+.prose code {
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
+  font-size: 0.88em;
+  background-color: var(--rule);
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+}
+
+/* --- Prose: Horizontal Rule --- */
+
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 1.5em 0;
+}
+
+/* --- Prose: Links --- */
+
+.prose a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  text-decoration-color: var(--muted);
+  transition: text-decoration-color 150ms ease;
+}
+
+.prose a:hover {
+  text-decoration-color: var(--fg);
+}
+
+/* --- Prose: Statement/Section fallback --- */
+
+.prose--statement {
+  max-width: 28em;
+}
+
+.prose--section {
+  max-width: 32em;
+}
+
 /* --- Beat: Breath --- */
 
 .beat--breath {
