@@ -17,17 +17,36 @@ export function createRenderer(
   let isFirst = true;
 
   function stripParagraphWrap(html: string): string {
-    // Remove <p>…</p> wrapper so text can nest inside <h1>/<h2> without invalid HTML
-    return html.replace(/^<p>(.*)<\/p>$/s, '$1');
+    // Remove <p>…</p> wrapper only when it's a single paragraph with no nested block elements
+    const trimmed = html.trim();
+    const match = trimmed.match(/^<p>(.*)<\/p>$/s);
+    if (match && !/<(?:p|h[1-6]|ul|ol|blockquote|hr|div)[>\s/]/i.test(match[1])) {
+      return match[1];
+    }
+    return trimmed;
+  }
+
+  function hasBlockElements(html: string): boolean {
+    return /<(?:h[1-6]|ul|ol|blockquote|hr)[>\s]/i.test(html);
   }
 
   function buildBeatHtml(beat: Beat, content: string): string {
     switch (beat.role) {
-      case 'statement':
-        return `<div class="beat beat--statement"><h1>${stripParagraphWrap(content) || escapeHtml(beat.content ?? '')}</h1></div>`;
+      case 'statement': {
+        const stripped = stripParagraphWrap(content);
+        if (hasBlockElements(stripped)) {
+          return `<div class="beat beat--statement"><div class="prose prose--statement">${content}</div></div>`;
+        }
+        return `<div class="beat beat--statement"><h1>${stripped || escapeHtml(beat.content ?? '')}</h1></div>`;
+      }
 
-      case 'section':
-        return `<div class="beat beat--section"><h2>${stripParagraphWrap(content) || escapeHtml(beat.content ?? '')}</h2></div>`;
+      case 'section': {
+        const stripped = stripParagraphWrap(content);
+        if (hasBlockElements(stripped)) {
+          return `<div class="beat beat--section"><div class="prose prose--section">${content}</div></div>`;
+        }
+        return `<div class="beat beat--section"><h2>${stripped || escapeHtml(beat.content ?? '')}</h2></div>`;
+      }
 
       case 'paragraph':
         return `<div class="beat beat--paragraph"><div class="prose">${content}</div></div>`;
