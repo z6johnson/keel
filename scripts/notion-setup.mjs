@@ -3,8 +3,8 @@
 /**
  * Keel — Notion Workspace Setup
  *
- * Creates a presentation database in Notion with the correct schema
- * and populates it with starter slides demonstrating each role.
+ * Creates a parent page with child pages (slides) in Notion.
+ * No database — just pages.
  *
  * Usage:
  *   NOTION_TOKEN=ntn_... node scripts/notion-setup.mjs [--parent PAGE_ID]
@@ -13,8 +13,6 @@
  */
 
 import { Client } from '@notionhq/client';
-
-// ---------- config ----------
 
 const token = process.env.NOTION_TOKEN;
 if (!token) {
@@ -28,66 +26,30 @@ const args = process.argv.slice(2);
 const parentIndex = args.indexOf('--parent');
 const parentPageId = parentIndex !== -1 ? args[parentIndex + 1] : null;
 
-// ---------- create database ----------
-
-async function createDatabase() {
-  const parent = parentPageId
-    ? { type: 'page_id', page_id: parentPageId }
-    : { type: 'page_id', page_id: await createParentPage() };
-
-  const db = await notion.databases.create({
-    parent,
-    title: [{ type: 'text', text: { content: 'Keel Presentation' } }],
-    properties: {
-      Name: { title: {} },
-      Order: { number: { format: 'number' } },
-    },
-  });
-
-  console.log(`Database created: ${db.id}`);
-  console.log(`Set NOTION_NOTES_DB=${db.id}`);
-  return db.id;
-}
-
-async function createParentPage() {
-  const page = await notion.pages.create({
-    parent: { type: 'workspace', workspace: true },
-    properties: {
-      title: [{ type: 'text', text: { content: 'Keel' } }],
-    },
-  });
-  console.log(`Parent page created: ${page.id}`);
-  return page.id;
-}
-
 // ---------- starter slides ----------
 
 const starterSlides = [
   {
-    name: 'Title',
-    order: 10,
+    title: 'Welcome to Keel',
     blocks: [
       { type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: 'Welcome to Keel' } }] } },
     ],
   },
   {
-    name: 'Breath',
-    order: 20,
+    title: 'Breath',
     blocks: [],
   },
   {
-    name: 'Thesis',
-    order: 30,
+    title: 'Thesis',
     blocks: [
       { type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: 'One idea per slide. Let the typography do the work.' } }] } },
     ],
   },
   {
-    name: 'Detail',
-    order: 40,
+    title: 'Detail',
     blocks: [
       { type: 'heading_2', heading_2: { rich_text: [{ type: 'text', text: { content: 'How it works' } }] } },
-      { type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: 'Each page in this database becomes a slide. Keel reads the content and infers the visual treatment automatically.' } }] } },
+      { type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: 'Each sub-page becomes a slide. Keel reads the content and infers the visual treatment automatically.' } }] } },
       { type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: 'Empty page = breath (visual pause)' } }] } },
       { type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: 'Short sentence = statement (large heading)' } }] } },
       { type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: 'Longer content = paragraph (body prose)' } }] } },
@@ -95,46 +57,66 @@ const starterSlides = [
     ],
   },
   {
-    name: 'Closing',
-    order: 50,
+    title: 'Closing',
     blocks: [],
   },
 ];
 
-async function populateSlides(dbId) {
+// ---------- create pages ----------
+
+async function main() {
+  console.log('Keel — Notion Workspace Setup\n');
+
+  // Create the parent presentation page
+  const parent = parentPageId
+    ? { page_id: parentPageId }
+    : { page_id: await createWorkspacePage() };
+
+  const presentationPage = await notion.pages.create({
+    parent,
+    properties: {
+      title: [{ type: 'text', text: { content: 'Keel Presentation' } }],
+    },
+  });
+
+  const pageId = presentationPage.id;
+  console.log(`Presentation page created: ${pageId}`);
+
+  // Create child pages (slides) inside the presentation page
+  console.log('\nCreating slides...');
   for (const slide of starterSlides) {
-    const page = await notion.pages.create({
-      parent: { database_id: dbId },
+    const childPage = await notion.pages.create({
+      parent: { page_id: pageId },
       properties: {
-        Name: { title: [{ type: 'text', text: { content: slide.name } }] },
-        Order: { number: slide.order },
+        title: [{ type: 'text', text: { content: slide.title } }],
       },
     });
 
     if (slide.blocks.length > 0) {
       await notion.blocks.children.append({
-        block_id: page.id,
+        block_id: childPage.id,
         children: slide.blocks,
       });
     }
 
-    console.log(`  Slide ${slide.order}: ${slide.name}${slide.blocks.length === 0 ? ' (breath)' : ''}`);
+    console.log(`  ${slide.title}${slide.blocks.length === 0 ? ' (breath)' : ''}`);
   }
-}
-
-// ---------- run ----------
-
-async function main() {
-  console.log('Keel — Notion Workspace Setup\n');
-
-  const dbId = await createDatabase();
-  console.log('\nPopulating starter slides...');
-  await populateSlides(dbId);
 
   console.log('\nDone. Next steps:');
-  console.log(`  1. Set NOTION_NOTES_DB=${dbId} in your environment`);
+  console.log(`  1. Set NOTION_PAGE_ID=${pageId}`);
   console.log('  2. Run: npm run dev');
   console.log('  3. Open: http://localhost:3000/?notion');
+}
+
+async function createWorkspacePage() {
+  const page = await notion.pages.create({
+    parent: { type: 'workspace', workspace: true },
+    properties: {
+      title: [{ type: 'text', text: { content: 'Keel' } }],
+    },
+  });
+  console.log(`Workspace page created: ${page.id}`);
+  return page.id;
 }
 
 main().catch((err) => {

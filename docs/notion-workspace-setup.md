@@ -1,122 +1,79 @@
 # Notion Workspace Setup
 
-Configure a Notion database as the content source for Keel. One page = one slide.
+One page = one presentation. Sub-pages inside it = slides.
 
 ---
 
 ## Quick Start (Automated)
 
-Run the setup script to create the database and starter slides automatically:
-
 ```bash
-NOTION_TOKEN=ntn_... node scripts/notion-setup.mjs
+NOTION_TOKEN=ntn_... npm run notion:setup
 ```
 
-Or target an existing parent page:
-
-```bash
-NOTION_TOKEN=ntn_... node scripts/notion-setup.mjs --parent PAGE_ID
-```
-
-The script outputs the `NOTION_NOTES_DB` value you need. Skip to [Environment Variables](#environment-variables).
+Creates a presentation page with starter slides. Outputs the `NOTION_PAGE_ID` you need.
 
 ---
 
 ## Manual Setup
 
-### 1. Create the Notion Integration
+### 1. Create the Integration
 
 1. Go to [notion.so/my-integrations](https://www.notion.so/my-integrations)
 2. Click **"+ New integration"**
-3. Name it **Keel**, select your workspace, click **Submit**
-4. Enable **Read content** under Capabilities
-5. Copy the token (`ntn_...`) — this is your `NOTION_TOKEN`
+3. Name it **Keel**, enable **Read content**, click **Submit**
+4. Copy the token (`ntn_...`) — this is your `NOTION_TOKEN`
 
-### 2. Create the Database
+### 2. Create the Presentation
 
-Create a new Notion page, then add an inline database (`/database`).
+1. Create a page in Notion (e.g., "Q3 Strategy") — this is your presentation
+2. Inside it, create sub-pages — each one is a slide
+3. Drag sub-pages to reorder them
+4. **Share** the parent page with the Keel integration ("Can view")
 
-| Property | Type   | Purpose                    |
-|----------|--------|----------------------------|
-| Name     | Title  | Label for your own use     |
-| Order    | Number | Sort position (10, 20, 30) |
-
-Two properties. If you omit Order, slides sort by creation time.
-
-**Share with the integration:** Click Share on the parent page, invite **Keel** with "Can view" access.
+That's it. No database, no properties, no schema.
 
 ---
 
 ## Slide Roles
 
-Every database row is a slide. Keel infers the role from the page body:
+Keel infers each slide's role from its page body:
 
-| Page content                     | Role          | Rendered as                  |
-|----------------------------------|---------------|------------------------------|
-| Empty page                       | **breath**    | Centered pause dot ( · )     |
-| Short text ( ≤ 140 characters )  | **statement** | Large display heading        |
-| Longer text, lists, headings     | **paragraph** | Body prose                   |
-| A URL or `{{signals}}`           | **signal**    | Cards fetched from that URL  |
-
-### Role inference rules
-
-1. Empty body → `breath`
-2. Body is `{{signals}}` or a bare URL → `signal`
-3. Body contains block-level markdown (headings, lists, quotes, rules) → `paragraph`
-4. Body has multiple paragraphs → `paragraph`
-5. Body ≤ 140 characters → `statement`
-6. Everything else → `paragraph`
+| Page content                    | Role          | Rendered as                 |
+|---------------------------------|---------------|-----------------------------|
+| Empty page                      | **breath**    | Centered pause dot ( · )    |
+| Short text ( ≤ 140 chars )      | **statement** | Large display heading       |
+| Longer text, lists, headings    | **paragraph** | Body prose                  |
+| A URL or `{{signals}}`          | **signal**    | Cards fetched from that URL |
 
 ---
 
 ## Environment Variables
 
-Set in Vercel project settings (or `.env` for local dev):
+| Variable         | Value                         | Required               |
+|------------------|-------------------------------|------------------------|
+| `NOTION_PAGE_ID` | Parent page ID (from the URL) | Yes                    |
+| `NOTION_TOKEN`   | Integration token (`ntn_...`) | Yes                    |
+| `FOGBELL_URL`    | Default signal API endpoint   | Only for `{{signals}}` |
 
-| Variable         | Value                              | Required                  |
-|------------------|------------------------------------|---------------------------|
-| `NOTION_TOKEN`   | Integration token (`ntn_...`)      | Yes                       |
-| `NOTION_NOTES_DB`| Database ID (32-char hex from URL) | Yes                       |
-| `FOGBELL_URL`    | Default signal API endpoint        | Only for `{{signals}}`    |
+### Finding the page ID
 
-### Finding the database ID
-
-1. Open the database as a full page
-2. URL: `https://www.notion.so/workspace/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?v=...`
-3. The 32-character hex string before `?v=` is the ID
-
----
-
-## Front-End Architecture
-
-The Notion API handler (`api/notion.ts`) returns a manifest consumed by the front end:
+Open the parent page in Notion. The URL looks like:
 
 ```
-Notion DB → api/notion?manifest → { title, slides[], fogbellUrl? }
-                                         ↓
-                                   main.ts (boot)
-                                         ↓
-                              engine ←→ renderer
-                                         ↓
-                              #stage > .slide-layer (crossfade)
-                                         ↓
-                              .slide--statement | .slide--paragraph
-                              .slide--signal    | .slide--breath
+https://www.notion.so/workspace/Page-Title-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
-- **`#stage`** — viewport containing two `.slide-layer` elements for crossfade transitions
-- **`engine`** — manages slide index, caching, navigation, color mode
-- **`renderer`** — swaps layers, builds slide HTML by role
+The 32-character hex string at the end is the page ID.
 
 ---
 
 ## Accessing the Presentation
 
-| Environment    | URL                                       |
-|----------------|-------------------------------------------|
-| Local dev      | `http://localhost:3000/?notion`            |
-| Production     | `https://your-domain.vercel.app/?notion`  |
-| Static fallback| `http://localhost:3000/` (manifest.json)  |
+| Environment     | URL                                      |
+|-----------------|------------------------------------------|
+| Local dev       | `http://localhost:3000/?notion`           |
+| Production      | `https://your-domain.vercel.app/?notion`  |
+| Static fallback | `http://localhost:3000/` (manifest.json)  |
 
 ```bash
 npm run dev
@@ -126,8 +83,7 @@ npm run dev
 
 ## Verification Checklist
 
-- [ ] Database has **Name** and **Order** properties
-- [ ] Integration has "Can view" access to the database's parent page
-- [ ] `NOTION_TOKEN` and `NOTION_NOTES_DB` are set
-- [ ] At least one page has content in its body
+- [ ] Parent page has sub-pages (slides) inside it
+- [ ] Integration has "Can view" access to the parent page
+- [ ] `NOTION_TOKEN` and `NOTION_PAGE_ID` are set
 - [ ] `/?notion` loads and shows the first slide
