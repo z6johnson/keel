@@ -1,82 +1,85 @@
-# Managing Keel Presentations
+# Managing Presentations
 
-A guide for writing, organizing, and presenting with Keel and Notion.
+Write, organize, and present with Keel and Notion.
 
-> **First-time setup?** See [Notion Setup](notion-workspace-setup.md) first.
+> **First-time setup?** See [Notion Workspace Setup](notion-workspace-setup.md) or run `node scripts/notion-setup.mjs`.
 
 ---
 
 ## Writing Slides
 
-Every slide is a **page** — a row in your Notion database. The page body is the content.
+Each row in the Notion database is a slide. The page body is the content.
 
-1. Add a row to the Workshop database
-2. Set the **Order** number (e.g., 10, 20, 30)
-3. Open the row and write your content
+1. Add a row to the database
+2. Set the **Order** number (10, 20, 30 — use gaps for easy insertion)
+3. Open the row and write
 
-That's it. Keel infers the visual treatment automatically:
+Keel infers the slide role automatically:
 
-| What you write | How Keel renders it |
-|---|---|
-| Nothing (empty page) | Visual pause (·) |
-| A short sentence | Large statement heading |
-| Multiple paragraphs, lists, headings | Body text prose |
-| A URL (e.g. `https://api.example.com/data`) | Signal cards fetched from that URL |
-| `{{signals}}` | Signal cards from configured beacon |
+| What you write                          | Role          | Visual treatment             |
+|-----------------------------------------|---------------|------------------------------|
+| Nothing (empty page)                    | **breath**    | Centered pause dot ( · )     |
+| A short sentence ( ≤ 140 chars )        | **statement** | Large display heading        |
+| Multiple paragraphs, lists, headings    | **paragraph** | Body prose                   |
+| A URL (e.g. `https://api.example.com/`) | **signal**    | Cards fetched from that URL  |
+| `{{signals}}`                           | **signal**    | Cards from configured beacon |
 
-### Supported Notion blocks
+---
 
-| Block | How to create |
-|-------|---------------|
-| Paragraph | Just type |
-| Heading 1–3 | `#`, `##`, `###` + space |
-| Bulleted list | `-` + space |
-| Numbered list | `1.` + space |
-| Quote | `>` + space |
-| Divider | `---` |
-| Callout | `/callout` |
-| **Bold** | `Ctrl/Cmd + B` |
-| *Italic* | `Ctrl/Cmd + I` |
-| `Code` | `Ctrl/Cmd + E` |
-| [Link](url) | `Ctrl/Cmd + K` |
+## Supported Notion Blocks
+
+| Block         | How to create       |
+|---------------|---------------------|
+| Paragraph     | Just type           |
+| Heading 1–3   | `#` `##` `###`      |
+| Bulleted list | `-` + space         |
+| Numbered list | `1.` + space        |
+| Quote         | `>` + space         |
+| Divider       | `---`               |
+| Callout       | `/callout`          |
+| **Bold**      | `Ctrl/Cmd + B`      |
+| *Italic*      | `Ctrl/Cmd + I`      |
+| `Code`        | `Ctrl/Cmd + E`      |
+| [Link](url)   | `Ctrl/Cmd + K`      |
 
 ---
 
 ## Ordering Slides
 
-Use the **Order** number property to control slide sequence. Use gaps (10, 20, 30) so you can insert slides without renumbering.
+Use the **Order** number property. Gaps (10, 20, 30) let you insert slides without renumbering everything.
 
-If you omit the Order property, slides sort by creation time.
+No Order property? Slides sort by creation time.
 
 ---
 
 ## Editing Content
 
-- Edit the page body in Notion — changes appear after cache expires (~5 minutes)
+- Edit page bodies in Notion — changes appear after cache expires (~5 min)
 - Redeploy on Vercel to clear cache immediately
 - Add/remove slides by adding/deleting database rows
-- Reorder by changing the Order property
+- Reorder by changing Order values
 
 ---
 
 ## Keyboard Controls
 
-| Key | Action |
-|-----|--------|
-| `→` / `↓` / `Space` / `Page Down` | Next slide |
-| `←` / `↑` / `Page Up` | Previous slide |
-| `Home` | First slide |
-| `End` | Last slide |
-| `T` | Toggle light/dark mode |
-| `F` | Toggle fullscreen |
+| Key                              | Action              |
+|----------------------------------|----------------------|
+| `→` `↓` `Space` `Page Down`     | Next slide           |
+| `←` `↑` `Page Up`               | Previous slide       |
+| `Home`                           | First slide          |
+| `End`                            | Last slide           |
+| `T`                              | Toggle light/dark    |
+| `F`                              | Toggle fullscreen    |
 
 ---
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| Blank presentation | Check that pages have content in the body |
-| Content not updating | Wait 5 minutes for cache, or redeploy |
-| Statement renders as prose | Content is too long or has block elements — shorten to ≤ 140 chars |
-| Signals show "not configured" | Set `FOGBELL_URL` env var, or paste a URL directly into the slide |
+| Problem                        | Fix                                                        |
+|--------------------------------|------------------------------------------------------------|
+| Blank presentation             | Check that pages have content in the body                  |
+| Content not updating           | Wait ~5 min for cache, or redeploy on Vercel               |
+| Statement renders as paragraph | Content is too long or has block elements — shorten ≤ 140  |
+| Signals show "not configured"  | Set `FOGBELL_URL` env var, or paste a URL into the slide   |
+| Slides in wrong order          | Check Order property values; ensure no duplicates          |

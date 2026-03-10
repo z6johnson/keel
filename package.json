@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "notion:setup": "node scripts/notion-setup.mjs"
   },
   "devDependencies": {
     "@vercel/node": "^5.6.11",
