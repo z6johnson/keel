@@ -5,7 +5,7 @@ import { createRenderer } from './renderer';
 
 async function boot() {
   const keel = document.getElementById('keel')!;
-  const container = document.getElementById('beat-container')!;
+  const container = document.getElementById('stage')!;
   const progressEl = document.getElementById('progress-counter')!;
 
   // Restore color mode

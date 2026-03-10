@@ -54,7 +54,7 @@ body {
   outline: none;
 }
 
-.beat-container {
+.stage {
   position: relative;
   width: 100%;
   height: 100%;
@@ -63,7 +63,7 @@ body {
   justify-content: center;
 }
 
-.beat-layer {
+.slide-layer {
   position: absolute;
   inset: 0;
   display: flex;
@@ -74,7 +74,7 @@ body {
   pointer-events: none;
 }
 
-.beat-layer.active {
+.slide-layer.active {
   opacity: 1;
 }
 
@@ -330,7 +330,7 @@ body {
 /* --- Reduced Motion --- */
 
 @media (prefers-reduced-motion: reduce) {
-  .beat-layer {
+  .slide-layer {
     transition: none;
   }
 }
