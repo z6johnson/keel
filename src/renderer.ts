@@ -8,8 +8,8 @@ export function createRenderer(
   container: HTMLElement,
   progressEl: HTMLElement
 ): Renderer {
-  const layerA = container.querySelector<HTMLElement>('#beat-a')!;
-  const layerB = container.querySelector<HTMLElement>('#beat-b')!;
+  const layerA = container.querySelector<HTMLElement>('#layer-a')!;
+  const layerB = container.querySelector<HTMLElement>('#layer-b')!;
 
   let activeLayer = layerA;
   let stagedLayer = layerB;
